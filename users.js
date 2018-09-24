@@ -12,11 +12,11 @@ var allUsers = JSON.parse(userFS.readFileSync(userFILE));
 Object.keys(allUsers).forEach(k => allUsers[k] = Object.assign(new User, allUsers[k]));
 allUsers.Create = function(id){
     var u = new User(id);
-    users[id] = u;
-	users.Save();
+    this[id] = u;
+	this.Save();
 }
 allUsers.Save = function(){
-    var text = JSON.stringify(users);
+    var text = JSON.stringify(this);
 	userFS.writeFile(userFILE, text);
 }
 
