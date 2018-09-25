@@ -1,6 +1,7 @@
 var charFS = require("fs");
 var request = require("request");
 var iconv  = require('iconv-lite');
+var {AnimaDice} = require('./ADice.js');
 var charFILE = "characters.json";
 const EMBEDSIZE = 50;
 
@@ -380,7 +381,85 @@ class Character{
 		}
 		return charEmb;
 	}
+
+	Roll(args){
+		var styles = Object.values(this.Combat);
+		var score = null;
+		switch(args[0])
+		{
+			case 'Attack':
+				var cstyle = getStyle(styles, args[1]);
+				if(cstyle){
+					score = cstyle.Attack;
+				}
+				else{
+					if(args[1] == 'Magic'){
+						score = this.Magic.OffProjection;
+					}
+					else if(args[1] == 'Psi'){
+						score = this.Psychic.Projection;
+					}
+					else{
+						return [-1];
+					}
+				}
+				break;
+			case 'Defense':
+				var cstyle = getStyle(styles, args[1]);
+				if(cstyle){
+					score = cstyle.Block
+					if(!cstyle.Block || (cstyle.Dodge && cstyle.Dodge > cstyle.Block) )
+						score = cstyle.Dodge;
+				}
+				else{
+					if(args[1] == 'Magic'){
+						score = this.Magic.DefProjection;
+					}
+					else if(args[1] == 'Psi'){
+						score = this.Psychic.Projection;
+					}
+					else{
+						return [-1];
+					}
+				}
+				break;
+			case 'Turn':
+				var cstyle = getStyle(styles, args[1]);
+				if(cstyle){
+					score = cstyle.Turn;
+				}
+				else{
+					if(args[1] == 'Magic'){
+						score = this.Magic.Turn;
+					}
+					else if(args[1] == 'Psi'){
+						score = this.Psychic.Turn;
+					}
+					else{
+						return [-1];
+					}
+				}
+				break;
+			default:
+				var score = this.Secondaries.filter(ob => ob[args[0]])[0][args[0]];
+				break;
+		}
+		if(score != null){
+			var ad = new AnimaDice(score);
+			return ad.Roll();
+		}
+		return [-1];
+	}
 }
+
+getStyle = function(styles, name){
+	var cstyle = styles.filter(c => c.Weapon==name)[0];
+	if(!cstyle){
+		cstyle = styles.filter(c => c.AddWeapon==name)[0];
+	}
+	return cstyle;
+}
+
 setAvatar = function(character, Embed){
 	if(character.Image){
 		Embed.thumbnail = { "url" : character.Image};
