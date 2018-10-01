@@ -131,15 +131,25 @@ function ResponseTo(message, args){
             }
             else{
                 var freeUser = { "username" : "Free" };
-                var chars = GetCharsByName(args.slice(1).join(" "));
-                for(i = 0; i< chars.length; i++){
-                    var ch = chars[i];
-                    var fullinfo = u.Id == ch.OwnerId;
-                    var emb = ch.Embed(fullinfo);
+                var chName = args.slice(1).join(" ");
+                var ch = GetUserChar(u, chName);
+                if(ch){
+                    var emb = ch.Embed(true);
                     var chOwner = client.users.get(ch.OwnerId)
                     emb.author.name = emb.author.name + ' [' + (chOwner || freeUser).username + ']'
                     emb.footer = EmbedFooter;
                     message.channel.send({embed: emb});
+                }
+                else{
+                    var chars = GetCharsByName(chName);
+                    for(i = 0; i< chars.length; i++){
+                        var ch = chars[i];
+                        var emb = ch.Embed(false);
+                        var chOwner = client.users.get(ch.OwnerId)
+                        emb.author.name = emb.author.name + ' [' + (chOwner || freeUser).username + ']'
+                        emb.footer = EmbedFooter;
+                        message.channel.send({embed: emb});
+                    }
                 }
             }
             break;
@@ -149,13 +159,17 @@ function ResponseTo(message, args){
                 rolled = (new AnimaDice(0)).Roll().slice(1);
             }
             else if(args.length == 3 || args.length == 4){
-                var c = GetUserChar(u, args[1]);
+                var  c = GetUserChar(u, args[1]);
                 if(c){
                     rolled = c.Roll(args.slice(2));
                     if(rolled.length == 1 && rolled[0] == -1){
                         message.reply('Not found Character directive.');
                         return;
                     }
+                }
+                else{
+                    message.reply('You have no Character starting with "' + args[1] + '".');
+                    return;
                 }
             }
             else{
@@ -209,8 +223,20 @@ Free = function(user, Id){
 
 GetUserChar = function (user, name){
     var ch;
-    for(i=0; i < user.Characters.length; i++){
-        var c = allCharacters[user.Characters[i]];
+    var uArray = user.Characters;
+    var p = parties.find(function(p){
+        return p.OwnerId = user.Id;
+    });
+    if(p){
+        var pChars = p.Characters;
+        if(p.Combat){
+            pChars = [...new Set([...p.Characters ,...Array.from(p.Combat.Combatants, comb => comb.Character)])];
+        }
+        uArray = [...new Set([...uArray ,...Array.from(pChars, c => c.Id)])]
+    }
+    
+    for(i=0; i < uArray.length; i++){
+        var c = allCharacters[uArray[i]];
         if(c && c.Name.startsWith(name)){
             ch = c;
             break;
@@ -268,6 +294,7 @@ CombatInstruction = function(user, message, args){
             var p = parties.filter(p=> p.OwnerId == user.Id)
             if(p.length != 1){
                 message.reply('cannot get user\'s party');
+                return;
             }
             p = p[0];
             p.startCombat();
@@ -291,7 +318,20 @@ CombatInstruction = function(user, message, args){
             }
             p = p[0];
             var combatant = p.Combat.Combatants.find(function(comb) { return comb.Character == c; });
-            combatant.Default = args.slice(2);
+            var w = args.slice(2).join(' ');
+            if(w != 'Magic' && w != 'Psi')
+            {
+                var weapons = combatant.Character.Combat.filter(function(style){ return style.Weapon.startsWith(w); });
+                if(weapons.length == 0){
+                    message.reply('this character does not have any Combat Style starting with ' + w);
+                    return;
+                }
+                else if(weapons.length > 1){
+                    message.reply('this character has more than one Combat Style starting with ' + w + '. Getting first.');
+                }
+                w = weapons[0].Weapon;
+            }
+            combatant.Default = w;
             message.channel.send("`Set " + combatant.Character.Name + " combat style to: " + combatant.Default+ "`");
             break;
         case 'add':
