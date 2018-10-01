@@ -52,7 +52,7 @@ function ResponseTo(message, args){
     {
         case 'help':
             if(!args[1])
-                message.reply('those are the **possible commands**: as, action, own, free, set, new, show');
+                message.reply('those are the **possible commands**:  as, action, own, free, set, show, party, combat, turn');
             else if(args[1] == 'as')
                 message.reply('**As command usage ->** ' + BOTINVOKE + 'as *characterName* Text to be written\nPlease, notice that yur user must OWN this character.');
             else
